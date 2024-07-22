@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe Game</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./client.js"></script>
+    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+</head>
+<body>
+    <h1 style="margin-top: 5%;">Welcome to Tic Tac Toe</h1>
+
+    <img id="home-bg2" src="assets/home-bg2.svg">
+    <img id="home-bg3"src="assets/home-bg3.svg">
+
+    <div class="center" id="menu">
+        <button class="gameButton" id="createGame" onclick="createGame()" style="margin-left: auto;">Create Game</button>
+        <div><p>OR</p></div>
+        <input type="text" name="" id="uniqueRoomID" placeholder="Enter Room ID"/>
+        <button class="gameButton" id="joinGame" onclick="joinGame()">Join Game</button>
+    </div>
+
+    
+    <div id="gameplay">
+        <div id="lobbyArea" class="center" >
+    
+        </div>
+    
+        <div id="board" style="display: none;">
+            <button class="square" id="square0" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square1" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square2" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square3" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square4" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square5" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square6" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square7" onclick="sendMove(this.id)"></button>
+            <button class="square" id="square8" onclick="sendMove(this.id)"></button>
+        </div>
+        
+        <br>
+        <div id="winnerArea" class=""display-4>
+
+        </div>
+    </div>
+
+</body>
+</html>
