@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tic Tac Toe Game</title>
     <link rel="stylesheet" href="./style.css">
-    <script src="/socket.io/socket.io.js"></script>
     <script src="./client.js"></script>
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+    <script src="https://auth.magic.link/sdk"></script>
 </head>
 <body>
     <h1 style="margin-top: 5%;">Welcome to Tic Tac Toe</h1>
@@ -16,10 +15,11 @@
     <img id="home-bg3"src="assets/home-bg3.svg">
 
     <div class="center" id="menu">
-        <button class="gameButton" id="createGame" onclick="createGame()" style="margin-left: auto;">Create Game</button>
+        <button class="gameButton" id="createGame" onclick="createGame()" disabled style="margin-left: auto;">Create Game</button>
         <div><p>OR</p></div>
         <input type="text" name="" id="uniqueRoomID" placeholder="Enter Room ID"/>
-        <button class="gameButton" id="joinGame" onclick="joinGame()">Join Game</button>
+        <button class="gameButton" id="joinGame" onclick="joinGame()" disabled>Join Game</button>
+        <button class="gameButton" id="login" onclick="login()">Login</button>
     </div>
 
     
@@ -47,4 +47,10 @@
     </div>
 
 </body>
+
+<!-- <script type="text/javascript" src="https://auth.magic.link/sdk/extension/solana"></script> -->
+
+<!-- <script defer>
+const magic = new window.Magic("pk_live_F858F8DB0A78CB24");
+</script> -->
 </html>

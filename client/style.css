@@ -74,6 +74,11 @@ p {
     /* padding: 10px; */
 }
 
+.gameButton:hover {
+    border-color: rgb(253, 255, 223);;
+    background-color: rgb(253, 255, 223);
+}
+
 input {
     border:solid;
     border-color: white;
