@@ -26,7 +26,7 @@ exports.checkWin = function checkWin(currentPlayer, winning_combinations, board)
 // later on replace this with just checking to see if 9 turns have passed, if no win condition is met then its an auto-tie.
 // You don't really need to process this, though it is a very small compute so idk
 exports.checkTie = function checkTie(board){
-    console.log("Checking tie. Board looks like this:", board)
+    // console.log("Checking tie. Board looks like this:", board)
     for (i in board) {
         if (board[i] === null) {
             return false

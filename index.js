@@ -14,13 +14,12 @@ const bs58 = require('bs58');
 const { Connection, PublicKey, Keypair } = require('@_koii/web3.js');
 
 
-
-
-
-
 // Init Vars // Server Vars
 const app = express();
 app.use(express.json())
+// let submissionObject = {}
+
+// let playerWallets = {}
 
 const rooms = {};
 
@@ -30,8 +29,7 @@ var serverGameEndState = false;
 // Init Vars // Game Vars
 let currentServerPlayer = "player1";
 
-player1AwaitingReset = false;
-player2AwaitingReset = false;
+playersAwaitingReset = false;
 
 let player1 = false;
 let player2 = false;
@@ -104,24 +102,23 @@ app.get('/game/state', (req, res) => {
     res.send({
         lobbyReady:lobbyReady,
         serverGameEndState: serverGameEndState,
-        player1AwaitingReset:player1AwaitingReset,
-        player2AwaitingReset:player2AwaitingReset,
+        playersAwaitingReset:playersAwaitingReset,
         currentServerPlayer:currentServerPlayer
     });
     res.end();
 });
 
 app.get("/game/board", (req, res) => {
+    // console.log("Sending Game Board...")
     res.send({
         board:board,
         lobbyReady:lobbyReady,
         serverGameEndState: serverGameEndState,
-        player1AwaitingReset:player1AwaitingReset,
-        player2AwaitingReset:player2AwaitingReset,
+        playersAwaitingReset:playersAwaitingReset,
         currentServerPlayer:currentServerPlayer
     });
     res.end();
-})
+});
 
 app.get('/createGame', (req, res) => {
     // const uniqueRoomID = makeId(6);
@@ -153,198 +150,272 @@ app.get('/joinGame', (req, res) => {
 app.post('/game/reset', (req, res) => {
     let resetRequestFromPlayer = req.body.player;
 
-    if (resetRequestFromPlayer === "player1") {
-        if (player1AwaitingReset) {
-            board = structuredClone(newBoard);
-            player1AwaitingReset = false;
-        } else {
-            console.error("player1 is not awaiting a reset on the server.")
-        }
-    } else if (resetRequestFromPlayer === "player2"){
-        if (player1AwaitingReset) {
-            board = structuredClone(newBoard);
-            player2AwaitingReset = false;
-        } else {
-            console.error("player2 is not awaiting a reset on the server.")
-        }
-    } else {
-        console.error("No valid player found.")
-    }
+    // signature = signMessage(JSON.stringify(turnLog))
+    // fs.writeFile("example.json", JSON.stringify(turnLog), (e) => console.log(e))
+    // fs.writeFile("example.json", signature, (e) => console.log(e))
 
-    serverGameEndState = false;
+    if (playersAwaitingReset) {
+        console.log("Received reset request. TURN LOG", turnLog)
+        console.log("Resetting board. Request from", resetRequestFromPlayer)
+        board = structuredClone(newBoard);
+        console.log("Board", board)
+        playersAwaitingReset = false;
+        serverGameEndState = false;
+    } else {
+        console.error("players not awaiting a reset on the server.")
+    }
+    
 
     res.send({
         board:board,
         lobbyReady:lobbyReady,
         serverGameEndState: serverGameEndState,
-        player1AwaitingReset:player1AwaitingReset,
-        player2AwaitingReset:player2AwaitingReset,
+        playersAwaitingReset:playersAwaitingReset,
         currentServerPlayer:currentServerPlayer
     });
+
+    console.log(turnLog)
+
     res.end();
 })
 
 app.post('/game/playerMadeMove', (req, res) => {
     // console.log(req.body)
-    let playerMove = req.body.playerMove;
+    let playerMoveChoice = req.body.playerMoveChoice;
+    let playerWallet = req.body.playerWallet;
     // console.log(currentServerPlayer)
     // console.log(req.body.player)
+    console.log("Server started processing move.")
 
-        if (board[playerMove] === null) {
-            console.log(req.body.player, "sent move", playerMove)
-            if (currentServerPlayer === "player1" && req.body.player === "player1") {
-                try {
-                    console.log(`Server acknowledged ${req.body.player} made move ${playerMove}`)
-        
-                    // access the playerMove from the payload
-                    // tell the room what the most recent move has been (BUT EVENTUALLY WE WANT TO STORE THIS IN A JSON)
-                    // rooms[payload.uniqueRoomID].p1Move = playerMove;
-        
-                    // update the servers board
-                    board[playerMove] = "player1"
-                    
-                    // check win
-                    if (checkWin(currentServerPlayer, winning_combinations, board)) {
-                        
-                        // emit to the caller
-                        // socket.emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer})
-                        
-                        // emit to the room
-                        // socket.to(payload.uniqueRoomID).emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer})
-                        
-                        console.log("Server found a win")
-                        serverGameEndState = currentServerPlayer;
-                        // reset the board
-                        player1AwaitingReset = true
-                        player2AwaitingReset = true
 
-                        return null
-                    }
+    if (board[playerMoveChoice] === null && serverGameEndState === false) {
+        console.log(req.body.player, "sent move", playerMoveChoice)
+        if (currentServerPlayer === "player1" && req.body.player === "player1") {
+            try {
+                console.log(`Server acknowledged ${req.body.player} made move ${playerMoveChoice}`)
+    
+                // access the playerMove from the payload
+                // tell the room what the most recent move has been (BUT EVENTUALLY WE WANT TO STORE THIS IN A JSON)
+                // rooms[payload.uniqueRoomID].p1Move = playerMove;
+    
+                // update the servers board
+                board[playerMoveChoice] = "player1"
+                
+                // check win/tie/else
+                if (checkWin(currentServerPlayer, winning_combinations, board)) {
                     
-                    // check tie
-                    if (checkTie(board)) {
-                        // emit to the caller
-                        // socket.emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                        // emit to the room
-                        // socket.to(payload.uniqueRoomID).emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                        
-                        serverGameEndState = "tie";
-                        // reset the board
-                        player1AwaitingReset = true
-                        player2AwaitingReset = true
-                        // console.log("Server found a win");
-                        return null;
-                    }
+                    // emit to the caller
+                    // socket.emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer})
                     
+                    // emit to the room
+                    // socket.to(payload.uniqueRoomID).emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer})
+                    
+                    console.log("Server found a win")
+                    console.log(board)
+                    serverGameEndState = currentServerPlayer;
+                    // reset the board
+                    playersAwaitingReset = true;
+
+                } else if (checkTie(board)) {
+                    // emit to the caller
+                    // socket.emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
+                    // emit to the room
+                    // socket.to(payload.uniqueRoomID).emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
+                    
+                    console.log("Server found a tie.")
+                    console.log(board)
+
+                    serverGameEndState = "tie";
+                    // reset the board
+                    playersAwaitingReset = true;
+                } else {
                     // pass the turn off to the other player
-                    console.log("Server confirmed move. Passing to next player.")
+                    console.log("Server confirmed move. Passing turn to player2. Board is now", board)
                     currentServerPlayer = "player2"
         
 
                     // Log turn to RAM
                     turnKey = "Turn " + (Object.keys(turnLog).length + 1)
-                    turnLog[turnKey] = {currentServerPlayer: currentServerPlayer, playerMove: playerMove}
+                    turnLog[turnKey] = {currentServerPlayer: currentServerPlayer, playerWallet: playerWallet ,playerMoveChoice: playerMoveChoice}
+
                     // socket.emit("serverConfirmedMove", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer})
                     // socket.in(payload.uniqueRoomID).emit("serverConfirmedMove", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer})
-                } catch(e) {
-                    console.log(`Server failed to acknowledge ${req.body.player} made a move: `, e)
                 }
-            } else if (currentServerPlayer === "player2" && req.body.player === "player2") {
-                try {
-                    console.log(`Server acknowledged ${req.body.player} made a move`)
-                    let playerMove = req.body.playerMove;
-        
-                    // access the playerMove from the payload
-                    // tell the room what the most recent move has been (BUT EVENTUALLY WE WANT TO STORE THIS IN A JSON)
-                    // rooms[payload.uniqueRoomID].p1Move = playerMove;
-        
-                    // update the servers board
-                    board[playerMove] = "player2";
+
+
+            } catch(e) {
+                console.log(`Server failed to acknowledge ${req.body.player} made a move: `, e)
+            }
+        } else if (currentServerPlayer === "player2" && req.body.player === "player2") {
+            try {
+                console.log(`Server acknowledged ${req.body.player} made a move`)
+                let playerMoveChoice = req.body.playerMoveChoice;
+    
+                // access the playerMove from the payload
+                // tell the room what the most recent move has been (BUT EVENTUALLY WE WANT TO STORE THIS IN A JSON)
+                // rooms[payload.uniqueRoomID].p1Move = playerMove;
+    
+                // update the servers board
+                board[playerMoveChoice] = "player2";
+                
+                // check win
+                if (checkWin(currentServerPlayer, winning_combinations, board)) {
+                            
+                    // emit to the caller
+                    // socket.emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
                     
-                    // check win
-                    if (checkWin(currentServerPlayer, winning_combinations, board)) {
-                                
-                        // emit to the caller
-                        // socket.emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                        
-                        // emit to the room
-                        // socket.to(payload.uniqueRoomID).emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                        
-                        serverGameEndState = currentServerPlayer;
-
-                        // reset the board
-                        player1AwaitingReset = true
-                        player2AwaitingReset = true
-
-                        console.log("Server found a win");
-                        return null;
-                    }
+                    // emit to the room
+                    // socket.to(payload.uniqueRoomID).emit("serverConfirmedWin", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
                     
-                    // check tie
-                    if (checkTie(board)) {
-                        // emit to the caller
-                        // socket.emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                        // emit to the room
-                        // socket.to(payload.uniqueRoomID).emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                        
-                        serverGameEndState = "tie";
+                    console.log("Server found a win")
+                    console.log(board)
+                    serverGameEndState = currentServerPlayer;
 
-                        // reset the board
-                        player1AwaitingReset = true
-                        player2AwaitingReset = true
-                        console.log("Server found a tie");
-                        return null;
-                    }
-                    
-                    // pass the turn off to the other player
-                    console.log("Server confirmed move. Passing to next player.")
-                    currentServerPlayer = "player1";
-        
+                    // reset the board
+                    playersAwaitingReset = true;
 
-
-                    // Log turn to RAM
-                    turnKey = "Turn " + (Object.keys(turnLog).length + 1)
-                    turnLog[turnKey] = {currentServerPlayer: currentServerPlayer, playerMove: playerMove}
-
-                    // socket.emit("serverConfirmedMove", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                    // socket.in(payload.uniqueRoomID).emit("serverConfirmedMove", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
-                } catch(e) {
-                    console.log(`Server failed to acknowledge ${req.body.player} made a move: `, e)
+                    return null;
                 }
-            } else {
-                console.log(currentServerPlayer)
-                console.log(req.body.player)
-                console.error("Could not find a valid currentServerPlayer. A player is likely trying to make a move when it is not their turn (or the server has failed and requires a restart).");
+                
+                // check tie
+                if (checkTie(board)) {
+                    // emit to the caller
+                    // socket.emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
+                    // emit to the room
+                    // socket.to(payload.uniqueRoomID).emit("serverConfirmedTie", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
+                    
+                    console.log("Server found a tie");
+                    console.log(board)
+                    serverGameEndState = "tie";
+
+                    // reset the board
+                    playersAwaitingReset = true;
+                    return null;
+                }
+                
+                // pass the turn off to the other player
+                console.log("Server confirmed move. Passing to next player1. Board is now", board)
+                currentServerPlayer = "player1";
+    
+
+
+                // Log turn to RAM
+                turnKey = "Turn " + (Object.keys(turnLog).length + 1)
+                turnLog[turnKey] = {currentServerPlayer: currentServerPlayer, playerWallet: playerWallet ,playerMoveChoice: playerMoveChoice}
+
+
+                // socket.emit("serverConfirmedMove", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
+                // socket.in(payload.uniqueRoomID).emit("serverConfirmedMove", {playerMove: payload.playerMove, board: board, currentServerPlayer: currentServerPlayer});
+            } catch(e) {
+                console.log(`Server failed to acknowledge ${req.body.player} made a move: `, e)
             }
         } else {
-            console.error("Client tried an invalid move.");
+            console.log("Current server player is", currentServerPlayer, "and request comes from", req.body.player)
+            console.error("Could not find a valid currentServerPlayer. A player is likely trying to make a move when it is not their turn (or the server has failed and requires a restart).");
         }
+    } else {
+        console.error("Client tried an invalid move.");
+    }
+    console.log("Server completed processing move.")
+    res.end()
 })
 
 app.post('/game/verify', async (req, res) => {
-    console.log(req.body)
+    // console.log(req.body)
+    // console.log("Message Req:", req.body.playerWallet);
+    // console.log("Signature Req:", req.body.signature);
+    // console.log("Public Key Req:", req.body.publicKey);
+    
+    // console.log("Decoded Signature", decodedSignature);
+    let message = Array.from(req.body.playerWallet).map(char => char.charCodeAt(0));
+    let signature = req.body.signature;
+    let publicKey = req.body.publicKey;
+    // console.log("Signature:", signature);
+    // console.log("Public Key :", publicKey);
 
-    const message = req.body.message
-    const signature = Uint8Array.from(Object.values(req.body.sig.signature))
-    const publicKey = req.body.sig.publicKey
-    console.log("ASasdS",publicKey)
+    // console.log(
+    //     newMessage,
+    //     Object.values(newMessage),
+    //     new Uint8Array(Object.values(newMessage))
+    //     // new Uint8Array(Object.values(signature)), // All Clear
+    //     // new Uint8Array(Object.values(new PublicKey(publicKey).toBytes()))  // Nearly impossible to verify
+    // )
 
-    let zz = new PublicKey(publicKey).toBytes()
-    console.log(zz)
-    const signVerify = nacl.sign.detached.verify(new TextEncoder().encode(message), signature, zz )
-    console.log(signVerify)
+    // console.log("Verification Proof", await verify(message, signature , publicKey))
+    let verification = await verify(message, signature , publicKey);
+    console.log(verification);
+    res.send(verification);
+    // if (verification === true) {
+    //     res.send({verified:true})
+    // } else {
+    //     res.send({verified:false})
+    // }
+    res.end();
+    
+    
+    // signature = res.get(signature)
+    // let decodedSignature = bs58.default.decode(req.body.encodedSignature);
+    // console.log(decodedSignature)
 
-    // console.log(req.body.sig.signature)
+    // const message = new TextEncoder().encode(req.body.message)
+    // // const signature = Uint8Array.from(Object.values(req.body.sig.signature))
+    // // console.log(req.body.sig.signature)
+    // const signature = new Uint8Array(Object.values(req.body.sig.signature))
+    // const publicKey = req.body.sig.publicKey
+
+    // const signature = req.body.sig.signature
+    // console.log(req.body.sig.publicKey)
+    // console.log(Object.values(req.body.sig.publicKey))
+    // console.log(new Uint8Array(Object.values(req.body.sig.publicKey)))
+    // const publicKey = new Uint8Array(Object.values(req.body.sig.publicKey))
+    // const textEncoded_publicKey = new TextEncoder().encode(req.body.sig.publicKey)
+    // console.log("ASasdS",publicKey)
+    
+    // let toBytes_PublicKey = new PublicKey(publicKey).toBytes()
+    // console.log("NEW PUB KEY", newPublicKey)
+
+    // TRUE OR FALSE
+    // const signVerify = nacl.sign.detached.verify(new TextEncoder().encode(message), signature, toBytes_PublicKey )
+    // console.log("SIGN VERIFY", signVerify)
+
+    // console.log(bs58.default.encode(signature))
+    // console.log("REQ BODY", req.body.message)
     // let array = Object.values(req.body.sig.signature);
-    // console.log(array)
+    // // console.log(array)
     // let uint = Uint8Array.from(array)
     // console.log(uint)
-    // console.log("REQ BODY", req.body.message, typeof(req.body.message))
+
+
+    // signature contains two objects; an object that stores the signed wallet and a public key
+    // console.log("REQ SIG", req.body.sig, typeof(req.body.message))
+    
+
+    // In the context of Koii Tac Toe we don't need to return a payload, but its in this template as an example
     // let payload = await payloadSigning(req.body.message)
-    // console.log(payload)
-    // console.log(verify(req.body.message, encode(Object.values(req.body.sig.signature)), req.body.sig.publicKey))
-    // signature = res.get(signature)
-    // res.end();
+    // console.log("PAYLOAD", payload)
+
+    // console.log(new TextEncoder().encode(message))
+    // console.log(typeof(signature))
+    // console.log(signature)
+    // signature = bs58.default.decode(signature)
+
+
+    // console.log(typeof(message))
+    // console.log(message)
+    // console.log(typeof(signature))
+    // console.log(signature)
+    // // console.log(typeof(publicKey))
+    // // console.log(publicKey)
+    // // console.log(typeof(toBytes_PublicKey))
+    // // console.log(toBytes_PublicKey)
+    // console.log(typeof(textEncoded_publicKey))
+    // console.log(textEncoded_publicKey)
+
+    // arguments = [message]
+    // for (var i = 0; i < arguments.length; i++) {
+    //     if (!(arguments[i] instanceof Uint8Array)) throw new TypeError('unexpected type, use Uint8Array');
+    //   }
+
 
     // console.log(verify("hello", signature, window.k2.publicKey))
 })
@@ -369,16 +440,22 @@ httpsServer.listen(1999, "127.0.0.1",  () => {
 
 // Verify Signature
 async function verify(message, signature, publicKey) {
-    console.log("TYPE OF SIG", typeof(signature))
-    console.log(signature)
-
     try {
-        const payload = nacl.sign.open(
-          await bs58Decode(message),
-          await bs58Decode(publicKey),
+        // const payload = nacl.sign.detached.verify(
+        //     new Uint8Array(Object.values(message)),
+        //     new Uint8Array(Object.values(signature)),
+        //     new Uint8Array(Object.values(new PublicKey(publicKey).toBytes()))
+        // );
+        const verified = nacl.sign.detached.verify(
+            new Uint8Array(Object.values(message)),
+            new Uint8Array(Object.values(signature)),
+            new Uint8Array(Object.values(new PublicKey(publicKey).toBytes()))
         );
-        if (!payload) return { error: 'Invalid signature' };
-        return { data: decodePayload(payload) };
+        if (!verified) return { error: 'Invalid signature' };
+        // return { data: decodePayload(payload) };
+        // playerWallets.push(message)
+        // console.log(playerWallets)
+        return { verified };
       } catch (e) {
         console.error(e);
         return { error: `Verification failed: ${e}` };
@@ -394,7 +471,6 @@ async function verify(message, signature, publicKey) {
     // return verified;
 }
 
-    
 async function payloadSigning(body) {
     const msg = new TextEncoder().encode(JSON.stringify(body));
     console.log("MSG", msg)
